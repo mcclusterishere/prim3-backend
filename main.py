@@ -4,33 +4,28 @@ from pydantic import BaseModel
 import openai
 import os
 
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
 app = FastAPI()
 
+# Explicit CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://prim3-frontend.onrender.com"],
+    allow_origins=["*"],  # Use ["https://your-frontend-url.com"] in production for security
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-openai.api_key = os.getenv('OPENAI_API_KEY')
-
 class Prompt(BaseModel):
     prompt: str
 
-@app.get("/")
-def read_root():
-    return {"message": "Prim3 Backend fully running!"}
-
 @app.post("/prim3")
-def get_response(prompt: Prompt):
-    try:
-        client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        completion = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt.prompt}]
-        )
-        return {"response": completion.choices[0].message.content}
-    except Exception as e:
-        return {"error": str(e)}
+async def prim3_endpoint(data: Prompt):
+    prompt = data.prompt
+    completion = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=150
+    )
+    return {"response": completion.choices[0].message.content.strip()}
