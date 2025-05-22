@@ -6,7 +6,7 @@ import os
 
 app = FastAPI()
 
-# Enabling CORS explicitly for frontend
+# Correctly configured CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://prim3-frontend.onrender.com"],
@@ -26,8 +26,11 @@ def read_root():
 
 @app.post("/prim3")
 def get_response(prompt: Prompt):
-    completion = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt.prompt}]
-    )
-    return {"response": completion.choices[0].message.content}
+    try:
+        completion = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt.prompt}]
+        )
+        return {"response": completion.choices[0].message.content}
+    except Exception as e:
+        return {"error": str(e)}
