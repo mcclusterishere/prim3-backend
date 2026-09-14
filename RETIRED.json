@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "status": "retired",
+  "repository": "mcclusterishere/prim3-backend",
+  "canonical_backend": "mcclusterishere/mccluster",
+  "canonical_worker": "mccluster",
+  "canonical_api": "https://api.mccluster.org",
+  "canonical_prim3_content": "mcclusterishere/Prim3",
+  "forbidden": [
+    "new runtime behavior",
+    "new auth or identity logic",
+    "new API endpoints",
+    "new database or migrations",
+    "new AI routing",
+    "new billing or payments",
+    "new deployment workflows",
+    "new production traffic"
+  ],
+  "allowed_changes": [
+    "retirement documentation",
+    "security history",
+    "machine retirement guards"
+  ],
+  "migration_rule": "Rebuild required behavior from current mccluster main; never resurrect this runtime."
+}
