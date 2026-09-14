@@ -1,0 +1,70 @@
+name: Retired Backend Guard
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retirement-contract:
+    name: Reject runtime resurrection
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Validate machine-readable retirement lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          with open('RETIRED.json', encoding='utf-8') as f:
+              lock = json.load(f)
+          assert lock['status'] == 'retired'
+          assert lock['repository'] == 'mcclusterishere/prim3-backend'
+          assert lock['canonical_backend'] == 'mcclusterishere/mccluster'
+          assert lock['canonical_worker'] == 'mccluster'
+          assert lock['canonical_api'] == 'https://api.mccluster.org'
+          PY
+
+      - name: Reject changes outside retirement policy surfaces
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${BASE_SHA}" || "${BASE_SHA}" =~ ^0+$ ]]; then
+            echo 'No comparable base SHA; retirement lock validation only.'
+            exit 0
+          fi
+          git fetch --no-tags origin "${BASE_SHA}" --depth=1 || true
+          changed="$(git diff --name-only "${BASE_SHA}" "${GITHUB_SHA}")"
+          printf '%s\n' "${changed}"
+          bad="$(printf '%s\n' "${changed}" | grep -Ev '^(README\.md|AGENTS\.md|RETIRED\.json|docs/|\.github/)' || true)"
+          if [[ -n "${bad}" ]]; then
+            echo 'Retired PRIM3 backend runtime/content changed:' >&2
+            printf '%s\n' "${bad}" >&2
+            echo 'Rebuild the change in mccluster or Prim3 instead; this repository is historical evidence only.' >&2
+            exit 1
+          fi
+
+      - name: Reject deployment workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find .github/workflows -maxdepth 1 -type f ! -name 'retired-backend-guard.yml' -print 2>/dev/null | grep -q .; then
+            echo 'Retired repository may not contain deployment or product workflows.' >&2
+            find .github/workflows -maxdepth 1 -type f -print >&2
+            exit 1
+          fi
